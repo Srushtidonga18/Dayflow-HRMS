@@ -4,6 +4,15 @@ from database.db_connection import get_db_connection
 
 user_bp = Blueprint("user", __name__, url_prefix="/user")
 
+from flask import Blueprint
+
+user_bp = Blueprint("user_bp", __name__)
+
+@user_bp.route("/", methods=["GET"])
+def get_users():
+    return {"message": "User GET API working"}
+
+
 @user_bp.route("/profile", methods=["POST"])
 @token_required
 def create_profile():

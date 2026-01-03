@@ -4,6 +4,15 @@ from database.db_connection import get_db_connection
 
 payroll_bp = Blueprint("payroll", __name__, url_prefix="/payroll")
 
+from flask import Blueprint
+
+payroll_bp = Blueprint("payroll_bp", __name__)
+
+@payroll_bp.route("/", methods=["GET"])
+def payroll_home():
+    return {"message": "Payroll GET API working"}
+
+
 @payroll_bp.route("/<int:user_id>", methods=["GET"])
 @token_required
 def view_payroll(user_id):

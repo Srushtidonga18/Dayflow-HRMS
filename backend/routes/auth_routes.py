@@ -3,7 +3,9 @@ import jwt
 from config import Config
 from utils.password_hash import hash_password, verify_password
 from database.db_connection import get_db_connection
-from models.user import UserModel
+from models.user import UserMode
+from werkzeug.security import check_password_hashl
+from models import User
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
@@ -41,19 +43,37 @@ def signup():
 
 
 # ✅ LOGIN
-@auth_bp.route("/login", methods=["POST"])
+from flask import jsonify, request
+from models import User
+from werkzeug.security import check_password_hash
+import jwt
+
+@auth_bp.route("/auth/login", methods=["POST"])
 def login():
-    data = request.json
-    user = UserModel.get_user_by_email(data["email"])
+    data = request.get_json()
 
-    if not user:
-        return {"message": "Invalid email"}, 401
+    user = User.query.filter_by(email=data["email"]).first()
 
-    if not verify_password(data["password"], user[7]):  # password_hash index
-        return {"message": "Invalid password"}, 401
+    if not user or not check_password_hash(user.password, data["password"]):
+        return jsonify({"message": "Invalid credentials"}), 401
 
-    return {
-        "message": "Login successful",
-        "user_id": user[0],
-        "role": user[8]
-    }
+    token = jwt.encode(
+        {"user_id": user.id},
+        "SECRET_KEY",
+        algorithm="HS256"
+    )
+
+    return jsonify({
+        "token": token,
+        "role": user.role,
+        "user": {
+            "id": user.id,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "email": user.email,
+            "employee_id": user.employee_id,
+            "company_code": user.company_code,
+            "phone": user.phone,
+            "year_of_joining": user.year_of_joining
+        }
+    }), 200

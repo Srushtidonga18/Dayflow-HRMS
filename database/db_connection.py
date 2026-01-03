@@ -26,5 +26,5 @@ def get_db_connection():
 if __name__ == "__main__":
     connection = get_db_connection()
     if connection:
-        print("✅ Database connected successfully")
+        print("Database connected successfully")
         connection.close()

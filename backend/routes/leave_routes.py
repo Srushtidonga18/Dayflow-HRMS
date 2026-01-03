@@ -1,32 +1,29 @@
 from flask import Blueprint, request, jsonify
 from utils.auth_middleware import token_required
 from database.db_connection import get_db_connection
+from models.leave import LeaveModel
 
 leave_bp = Blueprint("leave", __name__, url_prefix="/leave")
 
+from flask import Blueprint
+
+leave_bp = Blueprint("leave_bp", __name__)
+
+@leave_bp.route("/", methods=["GET"])
+def leave_home():
+    return {"message": "Leave GET API working"}
+
+
 @leave_bp.route("/apply", methods=["POST"])
-@token_required
 def apply_leave():
     data = request.json
-    user_id = request.user["user_id"]
 
-    conn = get_db_connection()
-    cur = conn.cursor()
+    LeaveModel.apply_leave(
+        user_id=data["user_id"],
+        leave_type_id=data["leave_type_id"],
+        start_date=data["start_date"],
+        end_date=data["end_date"],
+        reason=data.get("reason")
+    )
 
-    cur.execute("""
-        INSERT INTO hrms.leave_requests
-        (user_id, leave_type_id, start_date, end_date, reason)
-        VALUES (%s,%s,%s,%s,%s)
-    """, (
-        user_id,
-        data["leave_type_id"],
-        data["start_date"],
-        data["end_date"],
-        data["reason"]
-    ))
-
-    conn.commit()
-    cur.close()
-    conn.close()
-
-    return jsonify({"message": "Leave applied"})
+    return jsonify({"message": "Leave applied successfully"}), 201

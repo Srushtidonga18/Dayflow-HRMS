@@ -1,61 +1,59 @@
 from flask import Blueprint, request, jsonify
 import jwt
 from config import Config
-from utils.password_hash import hash_password, check_password
+from utils.password_hash import hash_password, verify_password
 from database.db_connection import get_db_connection
+from models.user import UserModel
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
+
+from flask import Blueprint
+
+auth_bp = Blueprint("auth_bp", __name__)
+
+@auth_bp.route("/test", methods=["GET"])
+def auth_test():
+    return {"message": "Auth API working"}
+
 
 @auth_bp.route("/signup", methods=["POST"])
 def signup():
     data = request.json
-    password = hash_password(data["password"])
 
-    conn = get_db_connection()
-    cur = conn.cursor()
+    password_hash = hash_password(data["password"])
 
-    cur.execute("""
-        INSERT INTO hrms.users
-        (employee_id, company_code, first_name, last_name, email,
-         password_hash, role, year_of_joining)
-        VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
-    """, (
-        data["employee_id"],
-        data["company_code"],
-        data["first_name"],
-        data["last_name"],
-        data["email"],
-        password,
-        data["role"],
-        data["year_of_joining"]
-    ))
+    user_id = UserModel.create_user(
+        employee_id=data["employee_id"],
+        company_code=data["company_code"],
+        first_name=data["first_name"],
+        last_name=data["last_name"],
+        email=data["email"],
+        phone=data.get("phone"),
+        password_hash=password_hash,
+        role=data["role"],
+        year_of_joining=data["year_of_joining"]
+    )
 
-    conn.commit()
-    cur.close()
-    conn.close()
-
-    return jsonify({"message": "User registered"}), 201
+    return jsonify({
+        "message": "User registered successfully",
+        "user_id": user_id
+    }), 201
 
 
+# ✅ LOGIN
 @auth_bp.route("/login", methods=["POST"])
 def login():
     data = request.json
+    user = UserModel.get_user_by_email(data["email"])
 
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT id, password_hash, role FROM hrms.users WHERE email=%s",
-        (data["email"],)
-    )
-    user = cur.fetchone()
+    if not user:
+        return {"message": "Invalid email"}, 401
 
-    if not user or not check_password(data["password"], user[1]):
-        return jsonify({"message": "Invalid credentials"}), 401
+    if not verify_password(data["password"], user[7]):  # password_hash index
+        return {"message": "Invalid password"}, 401
 
-    token = jwt.encode(
-        {"user_id": user[0], "role": user[2]},
-        Config.SECRET_KEY,
-        algorithm="HS256"
-    )
-
-    return jsonify({"token": token})
+    return {
+        "message": "Login successful",
+        "user_id": user[0],
+        "role": user[8]
+    }
